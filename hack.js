@@ -110,7 +110,7 @@
 		let lastHash = 0;
 		const calcHash = (x, y) => x * 100000 + y;
 		let start = Date.now();
-		while(Date.now() - start < 30000000) {
+		while(true) {
 			const body = getBody(instance);
 			const {x: headX, y: headY} = body[0];
 			const {x: tailX, y: tailY} = body[body.length-1];
