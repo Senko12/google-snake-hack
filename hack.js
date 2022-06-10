@@ -16,13 +16,13 @@
 	
   const renderObj = findGlobal(x => x.prototype.render && x.prototype.render.toString().includes('canvas.width') ? x : undefined);
   if (!renderObj) throw new Error('Render prot not found, signature scan isnt working anymore');
-	const [,gameInstanceVarName] = findGlobal(x => x.prototype.render.toString().match(/this\.(\w+)\.direction/)) || [];
+	const [,gameInstanceVarName] = findGlobal(x => x.prototype.render.toString().match(/this\.(\w+\.\w+)\.direction/)) || [];
   if (!gameInstanceVarName) throw new Error('Game instance var name not found, signature scan isnt working anymore');
 	const [,bodyVarName] = findGlobal(x => x.prototype.reset.toString().match(/this\.(\w+)\.push\(new/)) || [];
   if (!bodyVarName) throw new Error('Body var name not found, signature scan isnt working anymore');
 	const [,fruitVarName1, fruitVarName2] = findGlobal(x => x.prototype.reset.toString().match(/this.(\w+)\[0\]\.(\w+)\.x/)) || [];
   if (!fruitVarName1 || !fruitVarName2) throw new Error('Fruit var names not found, signature scan isnt working anymore');
-	const [,mapSizeVarName] = findGlobal(x => x.prototype.reset.toString().match(/this\.(\w+)\.width;/)) || [];
+	const [,mapSizeVarName] = findGlobal(x => x.prototype.reset.toString().match(/this\.(\w+\.\w+)\.width%2/)) || [];
   if (!mapSizeVarName) throw new Error('Map size var name not found, signature scan isnt working anymore');
 
 	console.log('renderObj.name', renderObj.name);
@@ -38,7 +38,7 @@
 			const original = renderObj.prototype.render;
 			renderObj.prototype.render = function (...args) {
 				console.log('Game Instance Hooked');
-				resolve(this[gameInstanceVarName]);
+				resolve(gameInstanceVarName.split('.').reduce((a,b) => a[b], this));
 				renderObj.prototype.render = original;
 				return original.call(this, ...args);
 			}
@@ -58,11 +58,12 @@
 	}
 
 	function getFruitPos(instance) {
-		return instance[fruitVarName1][0][fruitVarName2];
+		//return instance[fruitVarName1][0][fruitVarName2];
+		return {x: window.x||0, y: window.y||0}
 	}
 
 	function getMapSize(instance) {
-		return instance[mapSizeVarName];
+		return mapSizeVarName.split('.').reduce((a,b) => a[b], instance);
 	}
 
 	function buildMap(instance) {
@@ -107,6 +108,23 @@
 		));*/
 		
 		const instance = await getGameInstance();
+		/*console.log('instance', instance);
+		console.log('changeDir', changeDir(instance, 'RIGHT'));
+		console.log('getDir', getDir(instance));
+		console.log('getBody', getBody(instance));
+		console.log('getFruitPos', getFruitPos(instance));
+		console.log('getMapSize', getMapSize(instance));
+		return;*/
+		
+		const canvas = document.querySelector('canvas');
+		canvas.addEventListener('mousemove', (e) => {
+			const {width, height} = getMapSize(instance);
+			const margin = 28;
+			window.x = Math.max(0, Math.min(width-1, Math.floor((e.offsetX-margin) / (canvas.width-margin*2) * width)));
+			window.y = Math.max(0, Math.min(height-1, Math.floor((e.offsetY-margin) / (canvas.height-margin*2) * height)));
+		});
+		
+		
 		let lastHash = 0;
 		const calcHash = (x, y) => x * 100000 + y;
 		let start = Date.now();
